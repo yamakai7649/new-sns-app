@@ -10,6 +10,7 @@ export type ArticleListItem = {
 };
 
 export type ArticleDetail = ArticleListItem & {
+  userId: number
   content: string
   updatedAt: Date | null
 }

@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import Header from "@/components/Header"
 
 export const metadata: Metadata = {
-  title: "MiniDiary",
-  description: "就活記事の投稿・閲覧アプリ",
-};
+  title: "就活体験記",
+  description: "就活体験記を投稿・閲覧できるサービス",
+}
 
 export default function RootLayout({
   children,
@@ -24,10 +14,15 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      lang="ja"
     >
-      <body className="">{children}</body>
+      <body>
+        <Header />
+
+        <main>
+          {children}
+        </main>
+      </body>
     </html>
   );
 }

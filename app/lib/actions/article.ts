@@ -4,8 +4,15 @@ import { pool } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { JOB_TYPE_VALUES, INDUSTRY_VALUES } from "@/lib/constants/article"
+import { getCurrentUser } from "@/lib/auth/user"
 
 export async function createArticle(formData: FormData) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    redirect("/login");
+  }
+
   const title = formData.get("title")
   const content = formData.get("content")
   const jobType = formData.get("jobType")
@@ -38,8 +45,7 @@ export async function createArticle(formData: FormData) {
     throw new Error("職種または業界の値が不正です")
   }
 
-  // 認証実装前なので一旦固定
-  const userId = 1
+  const userId = currentUser.id;
 
   const result = await pool.query(
     `
@@ -73,6 +79,12 @@ export async function updateArticle(
   articleId: number,
   formData: FormData
 ) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    redirect("/login");
+  }
+
   const title = formData.get("title")
   const content = formData.get("content")
   const jobType = formData.get("jobType")
@@ -112,7 +124,7 @@ export async function updateArticle(
         job_type = $3,
         industry = $4,
         updated_at = NOW()
-      WHERE id = $5
+      WHERE id = $5 AND user_id = $6
       RETURNING id;
     `,
     [
@@ -121,6 +133,7 @@ export async function updateArticle(
       jobType,
       industry,
       articleId,
+      currentUser.id,
     ]
   )
 
@@ -135,6 +148,12 @@ export async function updateArticle(
 }
 
 export async function deleteArticle(articleId: number) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    redirect("/login");
+  }
+
   if (!Number.isInteger(articleId) || articleId <= 0) {
     throw new Error("記事IDが不正です")
   }
@@ -142,10 +161,10 @@ export async function deleteArticle(articleId: number) {
   const result = await pool.query(
     `
       DELETE FROM articles
-      WHERE id = $1
+      WHERE id = $1 AND user_id = $2
       RETURNING id;
     `,
-    [articleId]
+    [articleId, currentUser.id]
   )
 
   if (result.rows.length === 0) {

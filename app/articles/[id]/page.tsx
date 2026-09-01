@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import type { ArticleDetail } from "@/types/article"
 import Link from "next/link"
 import { DeleteArticleButton } from "./DeleteArticleButton"
+import { getCurrentUser } from "@/lib/auth/user"
 
 export default async function ArticleDetailPage({
   params,
@@ -20,6 +21,7 @@ export default async function ArticleDetailPage({
     `
       SELECT
         articles.id,
+        articles.user_id AS "userId",
         articles.title,
         articles.content,
         articles.job_type AS "jobType",
@@ -43,6 +45,10 @@ export default async function ArticleDetailPage({
     notFound()
   }
 
+  const currentUser = await getCurrentUser();
+
+  const isOwner: boolean = currentUser?.id === article.userId;
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-6 flex items-center justify-between">
@@ -53,16 +59,19 @@ export default async function ArticleDetailPage({
           ← 記事一覧へ
         </Link>
 
-        <div className="flex gap-2">
-          <Link
-            href={`/articles/${article.id}/edit`}
-            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
-          >
-            編集する
-          </Link>
+        {
+          isOwner &&
+          <div className="flex gap-2">
+            <Link
+              href={`/articles/${article.id}/edit`}
+              className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+            >
+              編集する
+            </Link>
 
-          <DeleteArticleButton articleId={article.id} />
-        </div>
+            <DeleteArticleButton articleId={article.id} />
+          </div>
+        }
       </div>
 
       <article>

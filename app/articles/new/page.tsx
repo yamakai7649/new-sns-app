@@ -1,7 +1,15 @@
 import { createArticle } from "@/lib/actions/article";
 import { JOB_TYPES, INDUSTRIES } from "@/lib/constants/article";
+import { getCurrentUser } from "@/lib/auth/user";
+import { redirect } from "next/navigation";
 
-export default function NewArticlePage() {
+export default async function NewArticlePage() {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    redirect("/login");
+  }
+
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="mb-8 text-2xl font-bold">就活記事を投稿する</h1>

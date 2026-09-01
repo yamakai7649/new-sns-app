@@ -1,8 +1,9 @@
 import { pool } from "@/lib/db"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import type { ArticleDetail } from "@/types/article"
 import { updateArticle } from "@/lib/actions/article"
 import { JOB_TYPES, INDUSTRIES } from "@/lib/constants/article"
+import { getCurrentUser } from "@/lib/auth/user"
 
 export default async function EditArticlePage({
   params,
@@ -20,6 +21,7 @@ export default async function EditArticlePage({
         `
           SELECT
             articles.id,
+            articles.user_id AS "userId",
             articles.title,
             articles.content,
             articles.job_type AS "jobType",
@@ -40,6 +42,16 @@ export default async function EditArticlePage({
     const article: ArticleDetail | undefined = result.rows[0];
 
     if (!article) {
+        notFound();
+    }
+
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser) {
+        redirect("/login");
+    }
+
+    if (currentUser.id !== article.userId) {
         notFound();
     }
 

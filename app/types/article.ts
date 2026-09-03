@@ -1,16 +1,22 @@
 export type ArticleListItem = {
-    id: number
-    title: string
-    jobType: string
-    industry: string
-    createdAt: Date
-    authorName: string
-    schoolName: string
-    graduationYear: number
-};
+  id: number
+  title: string
+  summary: string | null
+
+  username: string
+  displayName: string
+
+  createdAt: Date
+  publishedAt: Date | null
+}
 
 export type ArticleDetail = ArticleListItem & {
-  userId: number
-  content: string
-  updatedAt: Date | null
+  authorId: number
+
+  body: string
+
+  status: "draft" | "published"
+  visibility: "public" | "unlisted"
+
+  updatedAt: Date
 }

@@ -3,68 +3,63 @@
 import { pool } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { JOB_TYPE_VALUES, INDUSTRY_VALUES } from "@/lib/constants/article"
 import { getCurrentUser } from "@/lib/auth/user"
 
+const VISIBILITY_VALUES = ["public", "unlisted"] as const
+
 export async function createArticle(formData: FormData) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser()
 
   if (!currentUser) {
-    redirect("/login");
+    redirect("/login")
   }
 
   const title = formData.get("title")
-  const content = formData.get("content")
-  const jobType = formData.get("jobType")
-  const industry = formData.get("industry")
+  const summary = formData.get("summary")
+  const body = formData.get("body")
+  const visibility = formData.get("visibility")
 
-  // FormDataは string | File | null の可能性があるので確認
   if (
     typeof title !== "string" ||
-    typeof content !== "string" ||
-    typeof jobType !== "string" ||
-    typeof industry !== "string"
+    typeof summary !== "string" ||
+    typeof body !== "string" ||
+    typeof visibility !== "string"
   ) {
     throw new Error("入力内容が不正です")
   }
 
-  // 空文字チェック
-  if (
-    !title.trim() ||
-    !content.trim() ||
-    !jobType.trim() ||
-    !industry.trim()
-  ) {
-    throw new Error("すべての項目を入力してください")
+  if (!title.trim() || !body.trim()) {
+    throw new Error("タイトルと本文を入力してください")
   }
 
   if (
-    !JOB_TYPE_VALUES.includes(jobType as (typeof JOB_TYPE_VALUES)[number]) ||
-    !INDUSTRY_VALUES.includes(industry as (typeof INDUSTRY_VALUES)[number])
+    !VISIBILITY_VALUES.includes(
+      visibility as (typeof VISIBILITY_VALUES)[number]
+    )
   ) {
-    throw new Error("職種または業界の値が不正です")
+    throw new Error("公開範囲の値が不正です")
   }
-
-  const userId = currentUser.id;
 
   const result = await pool.query(
     `
       INSERT INTO articles (
-        user_id,
+        author_id,
         title,
-        content,
-        job_type,
-        industry
+        body,
+        summary,
+        status,
+        visibility,
+        published_at
       )
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1, $2, $3, $4, 'published', $5, NOW())
       RETURNING id;
     `,
     [
-      userId,
+      currentUser.id,
       title.trim(),
-      content.trim(),
-      jobType,
-      industry,
+      body.trim(),
+      summary.trim() || null,
+      visibility,
     ]
   )
 
@@ -74,45 +69,44 @@ export async function createArticle(formData: FormData) {
   redirect(`/articles/${articleId}`)
 }
 
-
 export async function updateArticle(
   articleId: number,
   formData: FormData
 ) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser()
 
   if (!currentUser) {
-    redirect("/login");
+    redirect("/login")
+  }
+
+  if (!Number.isInteger(articleId) || articleId <= 0) {
+    throw new Error("記事IDが不正です")
   }
 
   const title = formData.get("title")
-  const content = formData.get("content")
-  const jobType = formData.get("jobType")
-  const industry = formData.get("industry")
+  const summary = formData.get("summary")
+  const body = formData.get("body")
+  const visibility = formData.get("visibility")
 
   if (
     typeof title !== "string" ||
-    typeof content !== "string" ||
-    typeof jobType !== "string" ||
-    typeof industry !== "string"
+    typeof summary !== "string" ||
+    typeof body !== "string" ||
+    typeof visibility !== "string"
   ) {
     throw new Error("入力内容が不正です")
   }
 
-  if (
-    !title.trim() ||
-    !content.trim() ||
-    !jobType.trim() ||
-    !industry.trim()
-  ) {
-    throw new Error("すべての項目を入力してください")
+  if (!title.trim() || !body.trim()) {
+    throw new Error("タイトルと本文を入力してください")
   }
 
   if (
-    !JOB_TYPE_VALUES.includes(jobType as (typeof JOB_TYPE_VALUES)[number]) ||
-    !INDUSTRY_VALUES.includes(industry as (typeof INDUSTRY_VALUES)[number])
+    !VISIBILITY_VALUES.includes(
+      visibility as (typeof VISIBILITY_VALUES)[number]
+    )
   ) {
-    throw new Error("職種または業界の値が不正です")
+    throw new Error("公開範囲の値が不正です")
   }
 
   const result = await pool.query(
@@ -120,18 +114,19 @@ export async function updateArticle(
       UPDATE articles
       SET
         title = $1,
-        content = $2,
-        job_type = $3,
-        industry = $4,
+        body = $2,
+        summary = $3,
+        visibility = $4,
         updated_at = NOW()
-      WHERE id = $5 AND user_id = $6
+      WHERE id = $5
+        AND author_id = $6
       RETURNING id;
     `,
     [
       title.trim(),
-      content.trim(),
-      jobType,
-      industry,
+      body.trim(),
+      summary.trim() || null,
+      visibility,
       articleId,
       currentUser.id,
     ]
@@ -148,10 +143,10 @@ export async function updateArticle(
 }
 
 export async function deleteArticle(articleId: number) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser()
 
   if (!currentUser) {
-    redirect("/login");
+    redirect("/login")
   }
 
   if (!Number.isInteger(articleId) || articleId <= 0) {
@@ -161,7 +156,8 @@ export async function deleteArticle(articleId: number) {
   const result = await pool.query(
     `
       DELETE FROM articles
-      WHERE id = $1 AND user_id = $2
+      WHERE id = $1
+        AND author_id = $2
       RETURNING id;
     `,
     [articleId, currentUser.id]

@@ -1,9 +1,9 @@
 export type CurrentUser = {
   id: number
-  name: string
+  username: string
+  displayName: string
+  bio: string | null
+  avatarUrl: string | null
+  userType: "human" | "agent"
   email: string
-  schoolName: string
-  schoolType: string
-  faculty: string | null
-  graduationYear: number
 }

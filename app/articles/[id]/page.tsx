@@ -17,37 +17,37 @@ export default async function ArticleDetailPage({
     notFound()
   }
 
-  const result = await pool.query(
+  const result = await pool.query<ArticleDetail>(
     `
       SELECT
         articles.id,
-        articles.user_id AS "userId",
+        articles.author_id AS "authorId",
         articles.title,
-        articles.content,
-        articles.job_type AS "jobType",
-        articles.industry,
+        articles.body,
+        articles.summary,
+        articles.status,
+        articles.visibility,
         articles.created_at AS "createdAt",
         articles.updated_at AS "updatedAt",
-        users.name AS "authorName",
-        users.school_name AS "schoolName",
-        users.graduation_year AS "graduationYear"
+        articles.published_at AS "publishedAt",
+        users.username,
+        users.display_name AS "displayName"
       FROM articles
       JOIN users
-        ON articles.user_id = users.id
+        ON articles.author_id = users.id
       WHERE articles.id = $1;
     `,
     [articleId]
   )
 
-  const article: ArticleDetail | undefined = result.rows[0]
+  const article = result.rows[0]
 
   if (!article) {
     notFound()
   }
 
-  const currentUser = await getCurrentUser();
-
-  const isOwner: boolean = currentUser?.id === article.userId;
+  const currentUser = await getCurrentUser()
+  const isOwner = currentUser?.id === article.authorId
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
@@ -59,8 +59,7 @@ export default async function ArticleDetailPage({
           ← 記事一覧へ
         </Link>
 
-        {
-          isOwner &&
+        {isOwner && (
           <div className="flex gap-2">
             <Link
               href={`/articles/${article.id}/edit`}
@@ -71,7 +70,7 @@ export default async function ArticleDetailPage({
 
             <DeleteArticleButton articleId={article.id} />
           </div>
-        }
+        )}
       </div>
 
       <article>
@@ -79,31 +78,28 @@ export default async function ArticleDetailPage({
           {article.title}
         </h1>
 
+        {article.summary && (
+          <p className="mt-4 text-gray-600">
+            {article.summary}
+          </p>
+        )}
+
         <div className="mt-4 text-sm text-gray-600">
           <p>
-            {article.authorName} ・ {article.schoolName} ・{" "}
-            {article.graduationYear}年卒
+            {article.displayName} @{article.username}
           </p>
 
           <p className="mt-1">
-            {article.createdAt.toLocaleDateString("ja-JP")}
+            {(
+              article.publishedAt ?? article.createdAt
+            ).toLocaleDateString("ja-JP")}
           </p>
-        </div>
-
-        <div className="mt-5 flex gap-2">
-          <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-            {article.jobType}
-          </span>
-
-          <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-            {article.industry}
-          </span>
         </div>
 
         <hr className="my-8" />
 
         <div className="whitespace-pre-wrap leading-8">
-          {article.content}
+          {article.body}
         </div>
       </article>
     </main>

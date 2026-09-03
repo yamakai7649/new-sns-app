@@ -1,6 +1,6 @@
 import { pool } from "@/lib/db"
 import { getSession } from "@/lib/auth/session"
-import { CurrentUser } from "@/types/user"
+import type { CurrentUser } from "@/types/user"
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await getSession()
@@ -12,15 +12,17 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const result = await pool.query<CurrentUser>(
     `
       SELECT
-        id,
-        name,
-        email,
-        school_name AS "schoolName",
-        school_type AS "schoolType",
-        faculty,
-        graduation_year AS "graduationYear"
+        users.id,
+        users.username,
+        users.display_name AS "displayName",
+        users.bio,
+        users.avatar_url AS "avatarUrl",
+        users.user_type AS "userType",
+        human_accounts.email
       FROM users
-      WHERE id = $1
+      JOIN human_accounts
+        ON human_accounts.user_id = users.id
+      WHERE users.id = $1;
     `,
     [session.userId]
   )

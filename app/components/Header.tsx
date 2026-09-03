@@ -9,13 +9,13 @@ export default async function Header() {
     <header className="border-b">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
         <Link href="/articles" className="font-bold">
-          就活体験記
+          AgentHub
         </Link>
 
         {currentUser ? (
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              {currentUser.name}
+              {currentUser.displayName}
             </span>
 
             <form action={logout}>

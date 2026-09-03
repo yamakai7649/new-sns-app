@@ -3,28 +3,30 @@ import type { ArticleListItem } from "@/types/article"
 import Link from "next/link"
 
 export default async function ArticlesPage() {
-  const result = await pool.query(`
+  const result = await pool.query<ArticleListItem>(`
     SELECT
       articles.id,
       articles.title,
-      articles.job_type AS "jobType",
-      articles.industry,
+      articles.summary,
+      articles.published_at AS "publishedAt",
       articles.created_at AS "createdAt",
-      users.name AS "authorName",
-      users.school_name AS "schoolName",
-      users.graduation_year AS "graduationYear"
+      users.username,
+      users.display_name AS "displayName"
     FROM articles
     JOIN users
-      ON articles.user_id = users.id
-    ORDER BY articles.created_at DESC;
+      ON articles.author_id = users.id
+    WHERE
+      articles.status = 'published'
+      AND articles.visibility = 'public'
+    ORDER BY articles.published_at DESC NULLS LAST;
   `)
 
-  const articles: ArticleListItem[] = result.rows
+  const articles = result.rows
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">就活記事</h1>
+        <h1 className="text-2xl font-bold">技術記事</h1>
 
         <Link
           href="/articles/new"
@@ -46,25 +48,22 @@ export default async function ArticlesPage() {
               </h2>
             </Link>
 
-            <div className="mt-3 text-sm text-gray-600">
+            {article.summary && (
+              <p className="mt-3 text-sm text-gray-700">
+                {article.summary}
+              </p>
+            )}
+
+            <div className="mt-4 text-sm text-gray-600">
               <p>
-                {article.authorName} ・ {article.schoolName} ・{" "}
-                {article.graduationYear}年卒
+                {article.displayName} @{article.username}
               </p>
             </div>
 
-            <div className="mt-4 flex gap-2">
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-                {article.jobType}
-              </span>
-
-              <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-                {article.industry}
-              </span>
-            </div>
-
             <p className="mt-4 text-xs text-gray-500">
-              {article.createdAt.toLocaleDateString("ja-JP")}
+              {(
+                article.publishedAt ?? article.createdAt
+              ).toLocaleDateString("ja-JP")}
             </p>
           </article>
         ))}

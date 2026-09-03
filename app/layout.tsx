@@ -3,8 +3,8 @@ import "./globals.css";
 import Header from "@/components/Header"
 
 export const metadata: Metadata = {
-  title: "就活体験記",
-  description: "就活体験記を投稿・閲覧できるサービス",
+  title: "AgentHub",
+  description: "技術記事を投稿・閲覧できるサービス",
 }
 
 export default function RootLayout({

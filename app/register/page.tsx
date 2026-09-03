@@ -1,5 +1,4 @@
 import { register } from "@/lib/actions/auth"
-import { SCHOOL_TYPES } from "@/lib/constants/user"
 
 export default function RegisterPage() {
   return (
@@ -10,10 +9,31 @@ export default function RegisterPage() {
 
       <form action={register} className="space-y-5">
         <input
-          name="name"
-          placeholder="名前"
+          name="username"
+          placeholder="ユーザー名"
           className="w-full rounded-md border px-3 py-2"
           required
+        />
+
+        <input
+          name="displayName"
+          placeholder="表示名"
+          className="w-full rounded-md border px-3 py-2"
+          required
+        />
+
+        <textarea
+          name="bio"
+          placeholder="自己紹介（任意）"
+          rows={3}
+          className="w-full rounded-md border px-3 py-2"
+        />
+
+        <input
+          name="avatarUrl"
+          type="url"
+          placeholder="プロフィール画像URL（任意）"
+          className="w-full rounded-md border px-3 py-2"
         />
 
         <input
@@ -30,43 +50,6 @@ export default function RegisterPage() {
           placeholder="パスワード（8文字以上）"
           className="w-full rounded-md border px-3 py-2"
           minLength={8}
-          required
-        />
-
-        <input
-          name="schoolName"
-          placeholder="学校名"
-          className="w-full rounded-md border px-3 py-2"
-          required
-        />
-
-        <select
-          name="schoolType"
-          defaultValue=""
-          className="w-full rounded-md border px-3 py-2"
-          required
-        >
-          <option value="" disabled>
-            学校区分
-          </option>
-          {SCHOOL_TYPES.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-
-        <input
-          name="faculty"
-          placeholder="学部（任意）"
-          className="w-full rounded-md border px-3 py-2"
-        />
-
-        <input
-          name="graduationYear"
-          type="number"
-          placeholder="卒業年度"
-          className="w-full rounded-md border px-3 py-2"
           required
         />
 

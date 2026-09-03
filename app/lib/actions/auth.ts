@@ -1,42 +1,40 @@
 "use server"
 
 import { pool } from "@/lib/db"
-import { hashPassword } from "@/lib/auth/password"
+import {
+  hashPassword,
+  verifyPassword,
+} from "@/lib/auth/password"
+import {
+  createSession,
+  deleteSession,
+} from "@/lib/auth/session"
 import { redirect } from "next/navigation"
-import { createSession, deleteSession } from "@/lib/auth/session"
-import { verifyPassword } from "@/lib/auth/password"
-import { SCHOOL_TYPE_VALUES } from "../constants/user"
 
 export async function register(formData: FormData) {
-  const name = formData.get("name")
+  const username = formData.get("username")
+  const displayName = formData.get("displayName")
+  const bio = formData.get("bio")
+  const avatarUrl = formData.get("avatarUrl")
   const email = formData.get("email")
   const password = formData.get("password")
-  const schoolName = formData.get("schoolName")
-  const schoolType = formData.get("schoolType")
-  const faculty = formData.get("faculty")
-  const graduationYear = formData.get("graduationYear")
 
-  // ① 型チェック
   if (
-    typeof name !== "string" ||
+    typeof username !== "string" ||
+    typeof displayName !== "string" ||
+    typeof bio !== "string" ||
+    typeof avatarUrl !== "string" ||
     typeof email !== "string" ||
-    typeof password !== "string" ||
-    typeof schoolName !== "string" ||
-    typeof schoolType !== "string" ||
-    typeof faculty !== "string" ||
-    typeof graduationYear !== "string"
+    typeof password !== "string"
   ) {
     throw new Error("入力内容が不正です")
   }
 
-  // ② 空文字チェック
   if (
-    !name.trim() ||
+    !username.trim() ||
+    !displayName.trim() ||
     !email.trim() ||
-    !password ||
-    !schoolName.trim() ||
-    !schoolType ||
-    !graduationYear
+    !password
   ) {
     throw new Error("必須項目を入力してください")
   }
@@ -45,72 +43,79 @@ export async function register(formData: FormData) {
     throw new Error("パスワードは8文字以上で入力してください")
   }
 
-  const year = Number(graduationYear)
-
-  if (!Number.isInteger(year)) {
-    throw new Error("卒業年度が不正です")
-  }
-
-  if (
-      !SCHOOL_TYPE_VALUES.includes(schoolType as (typeof SCHOOL_TYPE_VALUES)[number])
-  ) {
-    throw new Error("学校区分の値が不正です");
-  }
-
-  // ③ email正規化
+  const normalizedUsername = username.trim().toLowerCase()
   const normalizedEmail = email.trim().toLowerCase()
 
-  // ④ passwordをArgon2idでhash
   const passwordHash = await hashPassword(password)
 
-  // ⑤ usersへ保存（emailのUNIQUE制約違反は重複エラーとして扱う）
-  let result
+  const client = await pool.connect()
+
+  let userId: number
 
   try {
-    result = await pool.query(
+    await client.query("BEGIN")
+
+    const userResult = await client.query<{ id: number }>(
       `
-      INSERT INTO users (
-        name,
-        email,
-        password_hash,
-        school_name,
-        school_type,
-        faculty,
-        graduation_year
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id;
-    `,
+        INSERT INTO users (
+          username,
+          display_name,
+          bio,
+          avatar_url,
+          user_type
+        )
+        VALUES ($1, $2, $3, $4, 'human')
+        RETURNING id;
+      `,
       [
-        name.trim(),
+        normalizedUsername,
+        displayName.trim(),
+        bio.trim() || null,
+        avatarUrl.trim() || null,
+      ]
+    )
+
+    userId = userResult.rows[0].id
+
+    await client.query(
+      `
+        INSERT INTO human_accounts (
+          user_id,
+          email,
+          password_hash
+        )
+        VALUES ($1, $2, $3);
+      `,
+      [
+        userId,
         normalizedEmail,
         passwordHash,
-        schoolName.trim(),
-        schoolType,
-        typeof faculty === "string" && faculty.trim()
-          ? faculty.trim()
-          : null,
-        year,
       ]
-    );
+    )
+
+    await client.query("COMMIT")
   } catch (error) {
+    await client.query("ROLLBACK")
+
     if (
       typeof error === "object" &&
       error !== null &&
       "code" in error &&
       error.code === "23505"
     ) {
-      throw new Error("そのメールアドレスはすでに使用されています")
+      throw new Error(
+        "そのユーザー名またはメールアドレスはすでに使用されています"
+      )
     }
 
     throw error
+  } finally {
+    client.release()
   }
 
-  const userId = result.rows[0].id;
+  await createSession(userId)
 
-  await createSession(userId);
-
-  redirect("/articles");
+  redirect("/articles")
 }
 
 type LoginUser = {
@@ -128,7 +133,9 @@ export async function login(formData: FormData) {
     !email.trim() ||
     !password
   ) {
-    throw new Error("メールアドレスとパスワードを入力してください")
+    throw new Error(
+      "メールアドレスとパスワードを入力してください"
+    )
   }
 
   const normalizedEmail = email.trim().toLowerCase()
@@ -136,10 +143,12 @@ export async function login(formData: FormData) {
   const result = await pool.query<LoginUser>(
     `
       SELECT
-        id,
-        password_hash AS "passwordHash"
-      FROM users
-      WHERE email = $1
+        users.id,
+        human_accounts.password_hash AS "passwordHash"
+      FROM human_accounts
+      JOIN users
+        ON human_accounts.user_id = users.id
+      WHERE human_accounts.email = $1;
     `,
     [normalizedEmail]
   )
@@ -147,7 +156,9 @@ export async function login(formData: FormData) {
   const user = result.rows[0]
 
   if (!user) {
-    throw new Error("メールアドレスまたはパスワードが違います")
+    throw new Error(
+      "メールアドレスまたはパスワードが違います"
+    )
   }
 
   const isValidPassword = await verifyPassword(
@@ -156,16 +167,18 @@ export async function login(formData: FormData) {
   )
 
   if (!isValidPassword) {
-    throw new Error("メールアドレスまたはパスワードが違います")
+    throw new Error(
+      "メールアドレスまたはパスワードが違います"
+    )
   }
 
   await createSession(user.id)
 
   redirect("/articles")
-};
+}
 
 export async function logout() {
   await deleteSession()
 
   redirect("/articles")
-};
+}

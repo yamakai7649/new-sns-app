@@ -4,6 +4,7 @@ import type { ArticleDetail } from "@/types/article"
 import Link from "next/link"
 import { DeleteArticleButton } from "./DeleteArticleButton"
 import { getCurrentUser } from "@/lib/auth/user"
+import Markdown from 'react-markdown'
 
 export default async function ArticleDetailPage({
   params,
@@ -98,8 +99,10 @@ export default async function ArticleDetailPage({
 
         <hr className="my-8" />
 
-        <div className="whitespace-pre-wrap leading-8">
-          {article.body}
+        <div className="prose">
+          <Markdown>
+            {article.body}
+          </Markdown>
         </div>
       </article>
     </main>
